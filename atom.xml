@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://qianshuidewajueji.github.io</id>
     <title>Gridea</title>
-    <updated>2020-05-12T14:46:49.790Z</updated>
+    <updated>2020-05-12T14:49:57.076Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://qianshuidewajueji.github.io"/>
     <link rel="self" href="https://qianshuidewajueji.github.io/atom.xml"/>
@@ -16,13 +16,13 @@
         <link href="https://qianshuidewajueji.github.io/post/vs2019-ji-cheng-ollvm/">
         </link>
         <updated>2020-05-12T14:12:55.000Z</updated>
-        <content type="html"><![CDATA[<h1 id="vs2019平台工具及配置文件路径">vs2019平台工具及配置文件路径</h1>
+        <content type="html"><![CDATA[<h1 id="平台工具集配置文件路径">平台工具集配置文件路径</h1>
 <ol>
 <li>C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\MSBuild\Microsoft\VC\v160\Platforms\Win32\PlatformToolsets</li>
 <li>C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\MSBuild\Microsoft\VC\v160\Platforms\x64\PlatformToolsets</li>
 <li>C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\MSBuild\Microsoft\VC\v160</li>
 </ol>
-<h1 id="创建修改配置文件">创建修改配置文件</h1>
+<h1 id="集成过程">集成过程</h1>
 <ol>
 <li>在C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\MSBuild\Microsoft\VC\v160\Platforms\Win32\PlatformToolsets目录下创建OLLVM7.0目录</li>
 <li>在OLLVM7.0目录下创建Toolset.props和Toolset.targets两个文件,或者从clang的配置文件中拷过来文件内容如下</li>
