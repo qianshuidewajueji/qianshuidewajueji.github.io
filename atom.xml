@@ -1,15 +1,126 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://qianshuidewajueji.github.io</id>
-    <title>Gridea</title>
-    <updated>2020-05-12T14:51:29.903Z</updated>
+    <title>qianshuidewajueji</title>
+    <updated>2020-06-14T14:15:55.853Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://qianshuidewajueji.github.io"/>
     <link rel="self" href="https://qianshuidewajueji.github.io/atom.xml"/>
     <subtitle>温故而知新</subtitle>
     <logo>https://qianshuidewajueji.github.io/images/avatar.png</logo>
     <icon>https://qianshuidewajueji.github.io/favicon.ico</icon>
-    <rights>All rights reserved 2020, Gridea</rights>
+    <rights>All rights reserved 2020, qianshuidewajueji</rights>
+    <entry>
+        <title type="html"><![CDATA[通过IShellDispatch2 com接口创建进程]]></title>
+        <id>https://qianshuidewajueji.github.io/post/tong-guo-ishelldispatch2-jie-kou-chuang-jian-jin-cheng/</id>
+        <link href="https://qianshuidewajueji.github.io/post/tong-guo-ishelldispatch2-jie-kou-chuang-jian-jin-cheng/">
+        </link>
+        <updated>2020-06-14T14:10:42.000Z</updated>
+        <content type="html"><![CDATA[<pre><code>inline LauncherVoidResult ShellExecuteByExplorer(const _bstr_t&amp; aPath,
+                                                 const _variant_t&amp; aArgs,
+                                                 const _variant_t&amp; aVerb,
+                                                 const _variant_t&amp; aWorkingDir,
+                                                 const _variant_t&amp; aShowCmd) {
+  // NB: Explorer may be a local server, not an inproc server
+  RefPtr&lt;IShellWindows&gt; shellWindows;
+  HRESULT hr = ::CoCreateInstance(
+      CLSID_ShellWindows, nullptr, CLSCTX_INPROC_SERVER | CLSCTX_LOCAL_SERVER,
+      IID_IShellWindows, getter_AddRefs(shellWindows));
+  if (FAILED(hr)) {
+    return LAUNCHER_ERROR_FROM_HRESULT(hr);
+  }
+
+  // 1. Find the shell view for the desktop.
+  _variant_t loc(int(CSIDL_DESKTOP));
+  _variant_t empty;
+  long hwnd;
+  RefPtr&lt;IDispatch&gt; dispDesktop;
+  hr = shellWindows-&gt;FindWindowSW(&amp;loc, &amp;empty, SWC_DESKTOP, &amp;hwnd,
+                                  SWFO_NEEDDISPATCH,
+                                  getter_AddRefs(dispDesktop));
+  if (FAILED(hr)) {
+    return LAUNCHER_ERROR_FROM_HRESULT(hr);
+  }
+
+  if (hr == S_FALSE) {
+    // The call succeeded but the window was not found.
+    return LAUNCHER_ERROR_FROM_WIN32(ERROR_NOT_FOUND);
+  }
+
+  RefPtr&lt;IServiceProvider&gt; servProv;
+  hr = dispDesktop-&gt;QueryInterface(IID_IServiceProvider,
+                                   getter_AddRefs(servProv));
+  if (FAILED(hr)) {
+    return LAUNCHER_ERROR_FROM_HRESULT(hr);
+  }
+
+  RefPtr&lt;IShellBrowser&gt; browser;
+  hr = servProv-&gt;QueryService(SID_STopLevelBrowser, IID_IShellBrowser,
+                              getter_AddRefs(browser));
+  if (FAILED(hr)) {
+    return LAUNCHER_ERROR_FROM_HRESULT(hr);
+  }
+
+  RefPtr&lt;IShellView&gt; activeShellView;
+  hr = browser-&gt;QueryActiveShellView(getter_AddRefs(activeShellView));
+  if (FAILED(hr)) {
+    return LAUNCHER_ERROR_FROM_HRESULT(hr);
+  }
+
+  // 2. Get the automation object for the desktop.
+  RefPtr&lt;IDispatch&gt; dispView;
+  hr = activeShellView-&gt;GetItemObject(SVGIO_BACKGROUND, IID_IDispatch,
+                                      getter_AddRefs(dispView));
+  if (FAILED(hr)) {
+    return LAUNCHER_ERROR_FROM_HRESULT(hr);
+  }
+
+  RefPtr&lt;IShellFolderViewDual&gt; folderView;
+  hr = dispView-&gt;QueryInterface(IID_IShellFolderViewDual,
+                                getter_AddRefs(folderView));
+  if (FAILED(hr)) {
+    return LAUNCHER_ERROR_FROM_HRESULT(hr);
+  }
+
+  // 3. Get the interface to IShellDispatch2
+  RefPtr&lt;IDispatch&gt; dispShell;
+  hr = folderView-&gt;get_Application(getter_AddRefs(dispShell));
+  if (FAILED(hr)) {
+    return LAUNCHER_ERROR_FROM_HRESULT(hr);
+  }
+
+  RefPtr&lt;IShellDispatch2&gt; shellDisp;
+  hr =
+      dispShell-&gt;QueryInterface(IID_IShellDispatch2, getter_AddRefs(shellDisp));
+  if (FAILED(hr)) {
+    return LAUNCHER_ERROR_FROM_HRESULT(hr);
+  }
+
+  // Passing the foreground privilege so that the shell can launch an
+  // application in the foreground.  If CoAllowSetForegroundWindow fails,
+  // we continue because it's not fatal.
+  hr = ::CoAllowSetForegroundWindow(shellDisp, nullptr);
+  MOZ_ASSERT(SUCCEEDED(hr));
+
+  // shellapi.h macros interfere with the correct naming of the method being
+  // called on IShellDispatch2. Temporarily remove that definition.
+#if defined(ShellExecute)
+#  define MOZ_REDEFINE_SHELLEXECUTE
+#  undef ShellExecute
+#endif  // defined(ShellExecute)
+
+  // 4. Now call IShellDispatch2::ShellExecute to ask Explorer to execute.
+  hr = shellDisp-&gt;ShellExecute(aPath, aArgs, aVerb, aWorkingDir, aShowCmd);
+  if (FAILED(hr)) {
+    return LAUNCHER_ERROR_FROM_HRESULT(hr);
+  }
+
+  return Ok();
+}
+</code></pre>
+<p>父进程为explorer.exe</p>
+]]></content>
+    </entry>
     <entry>
         <title type="html"><![CDATA[vs2019集成ollvm]]></title>
         <id>https://qianshuidewajueji.github.io/post/vs2019-ji-cheng-ollvm/</id>

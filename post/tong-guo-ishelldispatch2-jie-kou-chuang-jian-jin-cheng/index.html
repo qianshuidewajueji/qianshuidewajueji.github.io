@@ -1,0 +1,268 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>通过IShellDispatch2 com接口创建进程 | qianshuidewajueji</title>
+<link rel="shortcut icon" href="https://qianshuidewajueji.github.io/favicon.ico?v=1592144139758">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://qianshuidewajueji.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="通过IShellDispatch2 com接口创建进程 | qianshuidewajueji - Atom Feed" href="https://qianshuidewajueji.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="inline LauncherVoidResult ShellExecuteByExplorer(const _bstr_t&amp; aPath,
+                                             ..." />
+    <meta name="keywords" content="" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://qianshuidewajueji.github.io">
+  <img class="avatar" src="https://qianshuidewajueji.github.io/images/avatar.png?v=1592144139758" alt="">
+  </a>
+  <h1 class="site-title">
+    qianshuidewajueji
+  </h1>
+  <p class="site-description">
+    温故而知新
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              通过IShellDispatch2 com接口创建进程
+            </h2>
+            <div class="post-info">
+              <span>
+                2020-06-14
+              </span>
+              <span>
+                3 min read
+              </span>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content">
+                <pre><code>inline LauncherVoidResult ShellExecuteByExplorer(const _bstr_t&amp; aPath,
+                                                 const _variant_t&amp; aArgs,
+                                                 const _variant_t&amp; aVerb,
+                                                 const _variant_t&amp; aWorkingDir,
+                                                 const _variant_t&amp; aShowCmd) {
+  // NB: Explorer may be a local server, not an inproc server
+  RefPtr&lt;IShellWindows&gt; shellWindows;
+  HRESULT hr = ::CoCreateInstance(
+      CLSID_ShellWindows, nullptr, CLSCTX_INPROC_SERVER | CLSCTX_LOCAL_SERVER,
+      IID_IShellWindows, getter_AddRefs(shellWindows));
+  if (FAILED(hr)) {
+    return LAUNCHER_ERROR_FROM_HRESULT(hr);
+  }
+
+  // 1. Find the shell view for the desktop.
+  _variant_t loc(int(CSIDL_DESKTOP));
+  _variant_t empty;
+  long hwnd;
+  RefPtr&lt;IDispatch&gt; dispDesktop;
+  hr = shellWindows-&gt;FindWindowSW(&amp;loc, &amp;empty, SWC_DESKTOP, &amp;hwnd,
+                                  SWFO_NEEDDISPATCH,
+                                  getter_AddRefs(dispDesktop));
+  if (FAILED(hr)) {
+    return LAUNCHER_ERROR_FROM_HRESULT(hr);
+  }
+
+  if (hr == S_FALSE) {
+    // The call succeeded but the window was not found.
+    return LAUNCHER_ERROR_FROM_WIN32(ERROR_NOT_FOUND);
+  }
+
+  RefPtr&lt;IServiceProvider&gt; servProv;
+  hr = dispDesktop-&gt;QueryInterface(IID_IServiceProvider,
+                                   getter_AddRefs(servProv));
+  if (FAILED(hr)) {
+    return LAUNCHER_ERROR_FROM_HRESULT(hr);
+  }
+
+  RefPtr&lt;IShellBrowser&gt; browser;
+  hr = servProv-&gt;QueryService(SID_STopLevelBrowser, IID_IShellBrowser,
+                              getter_AddRefs(browser));
+  if (FAILED(hr)) {
+    return LAUNCHER_ERROR_FROM_HRESULT(hr);
+  }
+
+  RefPtr&lt;IShellView&gt; activeShellView;
+  hr = browser-&gt;QueryActiveShellView(getter_AddRefs(activeShellView));
+  if (FAILED(hr)) {
+    return LAUNCHER_ERROR_FROM_HRESULT(hr);
+  }
+
+  // 2. Get the automation object for the desktop.
+  RefPtr&lt;IDispatch&gt; dispView;
+  hr = activeShellView-&gt;GetItemObject(SVGIO_BACKGROUND, IID_IDispatch,
+                                      getter_AddRefs(dispView));
+  if (FAILED(hr)) {
+    return LAUNCHER_ERROR_FROM_HRESULT(hr);
+  }
+
+  RefPtr&lt;IShellFolderViewDual&gt; folderView;
+  hr = dispView-&gt;QueryInterface(IID_IShellFolderViewDual,
+                                getter_AddRefs(folderView));
+  if (FAILED(hr)) {
+    return LAUNCHER_ERROR_FROM_HRESULT(hr);
+  }
+
+  // 3. Get the interface to IShellDispatch2
+  RefPtr&lt;IDispatch&gt; dispShell;
+  hr = folderView-&gt;get_Application(getter_AddRefs(dispShell));
+  if (FAILED(hr)) {
+    return LAUNCHER_ERROR_FROM_HRESULT(hr);
+  }
+
+  RefPtr&lt;IShellDispatch2&gt; shellDisp;
+  hr =
+      dispShell-&gt;QueryInterface(IID_IShellDispatch2, getter_AddRefs(shellDisp));
+  if (FAILED(hr)) {
+    return LAUNCHER_ERROR_FROM_HRESULT(hr);
+  }
+
+  // Passing the foreground privilege so that the shell can launch an
+  // application in the foreground.  If CoAllowSetForegroundWindow fails,
+  // we continue because it's not fatal.
+  hr = ::CoAllowSetForegroundWindow(shellDisp, nullptr);
+  MOZ_ASSERT(SUCCEEDED(hr));
+
+  // shellapi.h macros interfere with the correct naming of the method being
+  // called on IShellDispatch2. Temporarily remove that definition.
+#if defined(ShellExecute)
+#  define MOZ_REDEFINE_SHELLEXECUTE
+#  undef ShellExecute
+#endif  // defined(ShellExecute)
+
+  // 4. Now call IShellDispatch2::ShellExecute to ask Explorer to execute.
+  hr = shellDisp-&gt;ShellExecute(aPath, aArgs, aVerb, aWorkingDir, aShowCmd);
+  if (FAILED(hr)) {
+    return LAUNCHER_ERROR_FROM_HRESULT(hr);
+  }
+
+  return Ok();
+}
+</code></pre>
+<p>父进程为explorer.exe</p>
+
+              </div>
+              <div class="toc-container">
+                
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://qianshuidewajueji.github.io/post/vs2019-ji-cheng-ollvm/">
+              <h3 class="post-title">
+                vs2019集成ollvm
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a>
+  <a class="rss" href="https://qianshuidewajueji.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>
